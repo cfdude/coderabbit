@@ -1,0 +1,142 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+#
+# Central CodeRabbit config for every cfdude repo that has no .coderabbit.yaml
+# of its own. A repo can override pieces of this by adding its own file with
+# `inheritance: true` at the top; anything it does not set falls through to here.
+#
+# Most of these repos are MCP servers and CLIs: they hold API keys, call
+# third-party APIs, and some run shell commands for an LLM. The review focus
+# below follows from that.
+
+language: en-US
+inheritance: false
+
+tone_instructions: >-
+  Be direct and specific. Lead with the defect and a concrete fix. Skip praise,
+  restating the diff, and style points that the linters already catch.
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  review_status: true
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  poem: false
+  in_progress_fortune: false
+  suggested_reviewers: false
+  suggested_labels: false
+  estimate_code_review_effort: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    ignore_title_keywords:
+      - "WIP"
+      - "[skip review]"
+    ignore_usernames:
+      - "dependabot[bot]"
+      - "renovate[bot]"
+
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/.venv/**"
+    - "!**/coverage/**"
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!**/pnpm-lock.yaml"
+    - "!**/uv.lock"
+    - "!**/directory_tree.md"
+    - "!**/*.min.js"
+    - "!**/*.snap"
+
+  path_instructions:
+    - path: "**/*.py"
+      instructions: >-
+        Follow the repo's own ruff and pytest config; do not assume a layout. Flag
+        bare excepts, swallowed errors, mutable default args, blocking I/O inside
+        async code, and HTTP calls with no timeout. Type hints on public functions.
+    - path: "**/*.{ts,tsx,js,mjs}"
+      instructions: >-
+        Strict TypeScript, ES2022, ESM. Flag `any` that leaks across module
+        boundaries, unhandled promise rejections, floating promises, and fetch
+        calls with no timeout or error handling.
+    - path: "**/{tests,test,__tests__}/**"
+      instructions: >-
+        Tests must not hit live APIs, paid services, or the network unless they
+        are explicitly marked as integration tests and excluded from the default
+        run. Flag tests that only assert a mock was called without checking
+        behavior, and tests that cannot fail.
+    - path: "**/*.sh"
+      instructions: >-
+        Expect `set -euo pipefail`, quoted variables, and no unguarded `rm -rf`
+        on a variable that could be empty.
+    - path: "**/*.{md,mdx}"
+      instructions: >-
+        Check that commands, flags, env var names, and file paths match the code
+        in this PR. Ignore prose style.
+
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: warning
+      requirements: >-
+        Conventional commit form: type(scope): subject, where type is one of
+        feat, fix, docs, style, refactor, test, chore, perf.
+    custom_checks:
+      - name: "Secrets and credential handling"
+        mode: error
+        instructions: >-
+          Fail if the PR adds a hard-coded API key, token, password, or private
+          key, writes a secret to logs or error messages, or commits a .env file.
+          Secrets must come from environment variables or a config file that is
+          gitignored.
+      - name: "MCP tool safety"
+        mode: warning
+        instructions: >-
+          Applies only when the PR adds or changes an MCP tool handler or anything
+          that runs shell commands, writes files, or makes network calls on behalf
+          of a model. Warn if tool input reaches a shell, a file path, or a URL
+          without validation, if a destructive action has no allowlist or
+          confirmation path, or if a tool's description no longer matches what it
+          does. Pass if the PR touches none of these.
+
+  tools:
+    ruff:
+      enabled: true
+    eslint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    trufflehog:
+      enabled: true
+    osvScanner:
+      enabled: true
+    semgrep:
+      enabled: true
+    actionlint:
+      enabled: true
+    zizmor:
+      enabled: true
+    skillspector:
+      enabled: true
+    languagetool:
+      enabled: false
+
+chat:
+  art: false
+  auto_reply: true
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+  learnings:
+    scope: global
